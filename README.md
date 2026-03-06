@@ -1,93 +1,193 @@
-# <!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
+
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
 <title>Locket Bunee</title>
 
 <style>
+
 body{
-font-family: Arial;
-background:#111;
+margin:0;
+font-family:Arial;
+background:black;
 color:white;
 text-align:center;
-margin:0;
-}
-
-h1{
-padding:20px;
 }
 
 video{
 width:100%;
 max-width:400px;
 border-radius:20px;
-}
-
-canvas{
-display:none;
+margin-top:10px;
 }
 
 button{
-padding:15px 30px;
-font-size:18px;
+padding:12px 18px;
 border:none;
 border-radius:20px;
-background:#ff2d55;
-color:white;
-margin-top:20px;
+margin:6px;
+font-size:16px;
+}
+
+.controls{
+margin-top:10px;
 }
 
 img{
 width:90%;
-margin-top:20px;
+margin-top:15px;
 border-radius:20px;
 }
+
+.chatbox{
+margin-top:10px;
+}
+
+input{
+padding:10px;
+border-radius:10px;
+border:none;
+}
+
+.chat{
+margin-top:10px;
+max-width:400px;
+margin-left:auto;
+margin-right:auto;
+background:#222;
+padding:10px;
+border-radius:10px;
+}
+
 </style>
+
 </head>
 
 <body>
 
-<h1>Locket Bunee 📸</h1>
+<h2>Locket Bunee 📸</h2>
 
 <video id="video" autoplay playsinline></video>
 
-<br>
+<canvas id="canvas" style="display:none"></canvas>
 
-<button onclick="takePhoto()">Chụp ảnh</button>
+<div class="controls">
 
-<canvas id="canvas"></canvas>
+<button onclick="takePhoto()">📸 Chụp</button>
+
+<button onclick="savePhoto()">💾 Lưu</button>
+
+<button onclick="switchCam()">🔄 Xoay Cam</button>
+
+<button onclick="emoji()">😀 Emoji</button>
+
+</div>
 
 <div id="photo"></div>
 
+<div class="chatbox">
+
+<input id="message" placeholder="Nhắn gì đó...">
+
+<button onclick="sendChat()">💬 Gửi</button>
+
+</div>
+
+<div class="chat" id="chat"></div>
+
 <script>
 
-const video = document.getElementById("video")
+let video=document.getElementById("video")
+let canvas=document.getElementById("canvas")
+let currentStream
+let facing="user"
+
+function startCam(){
 
 navigator.mediaDevices.getUserMedia({
-video:true
+video:{facingMode:facing}
 })
+
 .then(stream=>{
-video.srcObject = stream
+
+currentStream=stream
+video.srcObject=stream
+
 })
+
+}
+
+startCam()
 
 function takePhoto(){
 
-const canvas = document.getElementById("canvas")
-const context = canvas.getContext("2d")
+let ctx=canvas.getContext("2d")
 
-canvas.width = video.videoWidth
-canvas.height = video.videoHeight
+canvas.width=video.videoWidth
+canvas.height=video.videoHeight
 
-context.drawImage(video,0,0)
+ctx.drawImage(video,0,0)
 
-const img = canvas.toDataURL("image/png")
+let img=canvas.toDataURL("image/png")
 
-document.getElementById("photo").innerHTML =
-`<img src="${img}">`
+document.getElementById("photo").innerHTML=
+`<img id="captured" src="${img}">`
+
+}
+
+function savePhoto(){
+
+let img=document.getElementById("captured")
+
+if(!img)return
+
+let a=document.createElement("a")
+a.href=img.src
+a.download="photo.png"
+a.click()
+
+}
+
+function switchCam(){
+
+facing = facing=="user" ? "environment":"user"
+
+currentStream.getTracks().forEach(track=>track.stop())
+
+startCam()
+
+}
+
+function emoji(){
+
+let e=prompt("Nhập emoji")
+
+let img=document.getElementById("captured")
+
+if(!img)return
+
+document.getElementById("photo").innerHTML +=
+`<div style="font-size:40px">${e}</div>`
+
+}
+
+function sendChat(){
+
+let msg=document.getElementById("message").value
+
+if(msg=="")return
+
+document.getElementById("chat").innerHTML+=
+`<p>💬 ${msg}</p>`
+
+document.getElementById("message").value=""
 
 }
 
 </script>
 
 </body>
+
 </html>
