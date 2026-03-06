@@ -1,128 +1,128 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { db, storage } from './firebase';
-import { collection, addDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import { Camera, RefreshCw, Send, User, X } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Camera, Image as ImageIcon, RefreshCcw, MessageCircle, Users, ChevronDown, Zap } from 'lucide-react';
 
-const LocketClone = () => {
-  const [posts, setPosts] = useState([]);
+// --- Component Emoji Bay ---
+const FlyingEmoji = ({ id, emoji, onComplete }) => {
+  return (
+    <motion.div
+      initial={{ y: 0, x: 0, opacity: 1, scale: 1 }}
+      animate={{ 
+        y: -500, 
+        x: (Math.random() - 0.5) * 200, // Bay lệch trái/phải ngẫu nhiên
+        opacity: 0, 
+        scale: 1.5,
+        rotate: Math.random() * 45 
+      }}
+      transition={{ duration: 2, ease: "easeOut" }}
+      onAnimationComplete={() => onComplete(id)}
+      className="absolute bottom-20 text-4xl pointer-events-none z-50"
+    >
+      {emoji}
+    </motion.div>
+  );
+};
+
+const LocketBu = () => {
+  const [emojis, setEmojis] = useState([]);
   const [stream, setStream] = useState(null);
-  const [capturedImg, setCapturedImg] = useState(null);
-  const [loading, setLoading] = useState(false);
   const videoRef = useRef(null);
 
-  // 1. Lấy dữ liệu bài đăng real-time
-  useEffect(() => {
-    const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setPosts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // 2. Mở Camera
-  const startCamera = async () => {
-    const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-      video: { aspectWeight: 1, facingMode: "user" } 
-    });
-    setStream(mediaStream);
-    if (videoRef.current) videoRef.current.srcObject = mediaStream;
+  // Hàm tạo emoji khi click
+  const addEmoji = (e) => {
+    const list = ['❤️', '🔥', '😂', '😍', '👍', '✨'];
+    const newEmoji = {
+      id: Date.now(),
+      char: list[Math.floor(Math.random() * list.length)]
+    };
+    setEmojis((prev) => [...prev, newEmoji]);
   };
 
-  // 3. Chụp ảnh từ Video stream
-  const takePhoto = () => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 500; canvas.height = 500;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(videoRef.current, 0, 0, 500, 500);
-    setCapturedImg(canvas.toDataURL('image/jpeg'));
-    // Tắt camera sau khi chụp
-    stream.getTracks().forEach(track => track.stop());
-    setStream(null);
-  };
-
-  // 4. Gửi ảnh lên Firebase
-  const handleUpload = async () => {
-    if (!capturedImg) return;
-    setLoading(true);
-    try {
-      const storageRef = ref(storage, `posts/${Date.now()}.jpg`);
-      await uploadString(storageRef, capturedImg, 'data_url');
-      const url = await getDownloadURL(storageRef);
-      
-      await addDoc(collection(db, "posts"), {
-        imageUrl: url,
-        user: "User_Web",
-        createdAt: new Date()
-      });
-      setCapturedImg(null);
-    } catch (e) { console.error(e); }
-    setLoading(false);
+  const removeEmoji = (id) => {
+    setEmojis((prev) => prev.filter(e => e.id !== id));
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center overflow-x-hidden">
-      {/* Header */}
-      <div className="w-full max-w-md p-5 flex justify-between items-center sticky top-0 bg-black/50 backdrop-blur-lg z-50">
-        <User className="text-gray-400" />
-        <h1 className="text-xl font-black tracking-tighter italic">LOCKET CLONE</h1>
-        <div className="w-6" />
-      </div>
+    <div className="min-h-screen bg-gradient-to-b from-[#3a0210] via-[#2a010a] to-[#000000] text-white flex flex-col items-center overflow-hidden font-sans">
+      
+      {/* 1. TOP BAR */}
+      <header className="w-full max-w-md p-6 flex justify-between items-center z-10">
+        <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-zinc-700 shadow-lg">
+          <img src="https://i.pravatar.cc/100" alt="avatar" />
+        </div>
+        
+        <button className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2 text-sm font-medium border border-white/5">
+          <Users size={16} />
+          <span>63 người bạn</span>
+        </button>
 
-      {/* Feed */}
-      <div className="w-full max-w-md space-y-10 p-4 pb-40">
-        {posts.map((post) => (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} key={post.id} className="space-y-3">
-            <div className="flex items-center gap-2 px-2">
-              <div className="w-7 h-7 bg-yellow-400 rounded-full" />
-              <span className="font-bold text-sm">{post.user}</span>
-            </div>
-            <div className="aspect-square rounded-[45px] overflow-hidden border-[6px] border-zinc-900 shadow-2xl">
-              <img src={post.imageUrl} className="w-full h-full object-cover" alt="Locket" />
-            </div>
-          </motion.div>
-        ))}
-      </div>
+        <button className="p-2 bg-white/10 rounded-full backdrop-blur-md">
+          <MessageCircle size={22} fill="white" className="opacity-80" />
+        </button>
+      </header>
 
-      {/* Camera / Preview Overlay */}
-      <AnimatePresence>
-        {(stream || capturedImg) && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
-            className="fixed inset-0 bg-black z-[100] flex flex-col items-center justify-center p-6">
-            <button onClick={() => { setStream(null); setCapturedImg(null); }} className="absolute top-10 right-10 p-2 bg-zinc-800 rounded-full">
-              <X />
+      {/* 2. CAMERA PREVIEW (HÌNH VUÔNG BO TRÒN CỰC ĐẠI) */}
+      <main className="flex-1 w-full max-w-md flex flex-col items-center justify-center px-6 relative">
+        <h2 className="absolute top-4 text-zinc-500 font-bold tracking-[0.2em] text-xs uppercase">Locket Bu</h2>
+        
+        <div className="relative w-full aspect-square bg-black rounded-[60px] overflow-hidden shadow-2xl border border-white/5">
+          {/* Flash & Zoom icon */}
+          <Zap className="absolute top-6 left-6 text-white/70" size={20} />
+          <span className="absolute top-6 right-6 text-white/70 font-bold text-xs">1x</span>
+          
+          {/* Video Stream Placeholder */}
+          <div className="w-full h-full flex items-center justify-center bg-zinc-900/50">
+             <p className="text-zinc-600 text-sm italic">Camera đang sẵn sàng...</p>
+          </div>
+        </div>
+
+        {/* Emoji Container - Nơi emoji bay lên */}
+        <AnimatePresence>
+          {emojis.map(e => (
+            <FlyingEmoji key={e.id} id={e.id} emoji={e.char} onComplete={removeEmoji} />
+          ))}
+        </AnimatePresence>
+      </main>
+
+      {/* 3. BOTTOM CONTROLS */}
+      <footer className="w-full max-w-md p-8 pb-12 flex flex-col items-center gap-8">
+        
+        <div className="flex w-full justify-between items-center px-4">
+          <button className="p-3 bg-white/10 rounded-2xl">
+            <ImageIcon size={28} />
+          </button>
+
+          {/* Shutter Button - Nút bấm và cũng là nút thả emoji */}
+          <div className="relative group">
+            <button 
+              onClick={addEmoji}
+              className="w-20 h-20 bg-white rounded-full p-1 transition-transform active:scale-90"
+            >
+              <div className="w-full h-full rounded-full border-[4px] border-transparent bg-clip-border bg-gradient-to-tr from-pink-500 to-orange-400 p-1">
+                 <div className="w-full h-full bg-white rounded-full" />
+              </div>
             </button>
-            
-            <div className="w-full max-w-sm aspect-square rounded-[50px] overflow-hidden border-4 border-yellow-400">
-              {stream && <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover scale-x-[-1]" />}
-              {capturedImg && <img src={capturedImg} className="w-full h-full object-cover" alt="preview" />}
-            </div>
+          </div>
 
-            <div className="mt-10">
-              {stream ? (
-                <button onClick={takePhoto} className="w-20 h-20 bg-white rounded-full border-8 border-gray-300" />
-              ) : (
-                <button onClick={handleUpload} disabled={loading} className="flex items-center gap-2 bg-yellow-400 text-black px-8 py-4 rounded-full font-bold">
-                  {loading ? <RefreshCw className="animate-spin" /> : <Send />}
-                  {loading ? "Đang gửi..." : "Gửi ngay"}
-                </button>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Bottom Nav */}
-      {!stream && !capturedImg && (
-        <div className="fixed bottom-8 w-full max-w-xs flex justify-center">
-          <button onClick={startCamera} className="w-20 h-20 bg-yellow-400 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(250,204,21,0.5)] active:scale-90 transition">
-            <Camera size={35} color="black" strokeWidth={2.5} />
+          <button className="p-3 bg-white/10 rounded-full">
+            <RefreshCcw size={28} />
           </button>
         </div>
-      )}
+
+        {/* 4. HISTORY SECTION */}
+        <div className="flex flex-col items-center gap-2 cursor-pointer opacity-80 hover:opacity-100 transition">
+          <div className="flex items-center gap-2">
+            <span className="bg-[#ff2d55] text-white text-[10px] font-black px-1.5 py-0.5 rounded-md">16</span>
+            <span className="font-bold text-sm tracking-wide">Lịch sử</span>
+          </div>
+          <ChevronDown size={20} className="animate-bounce" />
+        </div>
+      </footer>
+
+      {/* iPhone Indicator bar */}
+      <div className="w-32 h-1 bg-white/20 rounded-full mb-2" />
     </div>
   );
 };
 
-export default LocketClone;
+export default LocketBu;
