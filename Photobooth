@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LOCKET BU - DOWNLOAD</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes emojiFly {
+            0% { transform: translateY(0) scale(0.5); opacity: 1; }
+            100% { transform: translateY(-500px) translateX(var(--x)) rotate(var(--r)); opacity: 0; scale: 2; }
+        }
+        .emoji {
+            position: absolute; bottom: 120px; font-size: 50px;
+            animation: emojiFly 2s ease-out forwards; pointer-events: none; z-index: 100;
+        }
+        .camera-box { border-radius: 55px; overflow: hidden; border: 4px solid #000; position: relative; background: #111; }
+        #photo-preview { display: none; width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 20; }
+        .retake-btn { display: none; position: absolute; top: 20px; right: 20px; z-index: 30; background: rgba(0,0,0,0.6); padding: 8px 12px; border-radius: 20px; font-size: 14px; font-weight: bold; }
+    </style>
+</head>
+<body class="bg-black text-white overflow-hidden">
+    <div id="app" class="flex flex-col items-center h-screen bg-gradient-to-b from-[#3a0210] to-black">
+        
+        <div class="w-full max-w-md p-6 flex justify-between items-center">
+            <div class="w-10 h-10 rounded-full border-2 border-white/20 overflow-hidden shadow-lg">
+                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="avatar" />
+            </div>
+            <div class="bg-white/10 px-4 py-2 rounded-full text-[13px] font-bold border border-white/10">👥 63 người bạn</div>
+            <div class="text-2xl">💬</div>
+        </div>
+
+        <div class="flex-1 w-full max-w-md flex flex-col items-center justify-center px-6 relative">
+            <h1 class="absolute top-2 text-white/30 font-black tracking-[0.3em] text-[10px]">LOCKET BU</h1>
+            
+            <div class="relative w-full aspect-square camera-box shadow-2xl">
+                <video id="video" autoplay playsinline class="w-full h-full object-cover scale-x-[-1]"></video>
+                
+                <img id="photo-preview" class="scale-x-[-1]" />
+                
+                <button id="btn-retake" class="retake-btn text-white">Chụp lại ✕</button>
+
+                <div class="absolute top-5 left-5 text-white/50 z-10">⚡</div>
+                <div class="absolute top-5 right-10 text-white/50 text-xs z-10 border border-white/20 px-1 rounded">1x</div>
+            </div>
+
+            <div id="emoji-layer"></div>
+        </div>
+
+        <div class="w-full max-w-md p-8 pb-12 flex flex-col items-center gap-10">
+            <div class="flex w-full justify-between items-center px-4">
+                <div class="text-3xl opacity-40">🖼️</div>
+                
+                <button id="btn-shoot" class="w-24 h-24 bg-white rounded-full p-1 active:scale-90 transition shadow-xl">
+                    <div class="w-full h-full rounded-full border-[5px] border-orange-500 bg-white"></div>
+                </button>
+
+                <div class="text-3xl opacity-40">🔄</div>
+            </div>
+
+            <div id="bottom-action-container" class="flex flex-col items-center gap-2">
+                <div id="history-badge" class="flex flex-col items-center gap-2 opacity-80 cursor-pointer">
+                    <div class="bg-white/10 px-4 py-2 rounded-2xl flex items-center gap-2 border border-white/5">
+                        <span class="bg-[#ff2d55] text-[10px] px-1.5 py-0.5 rounded font-black">16</span>
+                        <span class="font-bold text-sm tracking-wide text-white/90">Lịch sử</span>
+                    </div>
+                    <div class="animate-bounce text-white/20">▼</div>
+                </div>
+
+                <button id="btn-download" class="hidden bg-yellow-400 text-black px-12 py-3 rounded-full font-black text-sm uppercase tracking-widest shadow-lg active:scale-95 transition">
+                    Tải ảnh về ⬇️
+                </button>
+            </div>
+        </div>
+        
+        <canvas id="canvas" style="display:none;"></canvas>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const photoPreview = document.getElementById('photo-preview');
+        const btnShoot = document.getElementById('btn-shoot');
+        const btnRetake = document.getElementById('btn-retake');
+        const btnDownload = document.getElementById('btn-download');
+        const historyBadge = document.getElementById('history-badge');
+        const emojiLayer = document.getElementById('emoji-layer');
+
+        // 1. Mở máy ảnh
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 800, height: 800 } })
+            .then(stream => { video.srcObject = stream; })
+            .catch(err => alert("Không mở được camera: " + err));
+
+        // 2. Hiệu ứng thả Emoji
+        function throwEmoji() {
+            const list = ['❤️', '🔥', '😂', '😍', '✨', '💀', '👍'];
+            const el = document.createElement('div');
+            el.className = 'emoji';
+            el.innerText = list[Math.floor(Math.random() * list.length)];
+            el.style.setProperty('--x', (Math.random() * 320 - 160) + 'px');
+            el.style.setProperty('--r', (Math.random() * 90 - 45) + 'deg');
+            emojiLayer.appendChild(el);
+            setTimeout(() => el.remove(), 2000);
+        }
+
+        // 3. Chụp ảnh
+        btnShoot.onclick = () => {
+            throwEmoji();
+
+            // Lấy khung hình từ video dán vào canvas
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            
+            // Lật ảnh lại vì video đang dùng scale-x-[-1] (soi gương)
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0);
+            
+            // Chuyển thành file ảnh
+            const photoData = canvas.toDataURL('image/jpeg', 0.9);
+            photoPreview.src = photoData;
+            
+            // Chuyển giao diện
+            photoPreview.style.display = 'block';
+            btnRetake.style.display = 'block';
+            video.style.opacity = '0';
+            historyBadge.style.display = 'none';
+            btnDownload.style.display = 'block';
+        };
+
+        // 4. Chụp lại
+        btnRetake.onclick = (e) => {
+            e.stopPropagation();
+            photoPreview.style.display = 'none';
+            btnRetake.style.display = 'none';
+            video.style.opacity = '1';
+            historyBadge.style.display = 'flex';
+            btnDownload.style.display = 'none';
+        };
+
+        // 5. TẢI ẢNH VỀ
+        btnDownload.onclick = () => {
+            const link = document.createElement('a');
+            link.download = `LocketBu_${Date.now()}.jpg`;
+            link.href = photoPreview.src;
+            link.click();
+            
+            // Thông báo nhỏ
+            alert("Đã lưu ảnh vào máy bạn! ✨");
+        };
+    </script>
+</body>
+</html>
