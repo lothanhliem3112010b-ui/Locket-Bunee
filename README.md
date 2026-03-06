@@ -1,193 +1,143 @@
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
-
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<title>Locket Bunee</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Locket-Bunee</title>
 
 <style>
-
 body{
 margin:0;
-font-family:Arial;
-background:black;
+background:#000;
 color:white;
+font-family:sans-serif;
 text-align:center;
 }
 
 video{
 width:100%;
-max-width:400px;
-border-radius:20px;
-margin-top:10px;
-}
-
-button{
-padding:12px 18px;
-border:none;
-border-radius:20px;
-margin:6px;
-font-size:16px;
+height:60vh;
+object-fit:cover;
 }
 
 .controls{
-margin-top:10px;
+position:fixed;
+bottom:20px;
+width:100%;
+display:flex;
+justify-content:center;
+gap:10px;
 }
 
-img{
-width:90%;
-margin-top:15px;
+button{
+padding:12px 16px;
+border:none;
 border-radius:20px;
+font-size:16px;
 }
 
-.chatbox{
-margin-top:10px;
+.capture{background:white;}
+.save{background:#00ff88;}
+.rotate{background:#ffaa00;}
+.emoji{background:#ff66cc;}
+.chat{background:#00aaff;}
+
+#chatBox{
+position:fixed;
+bottom:90px;
+left:50%;
+transform:translateX(-50%);
+width:80%;
+display:none;
 }
 
-input{
+#chatBox input{
+width:70%;
 padding:10px;
 border-radius:10px;
 border:none;
 }
 
-.chat{
-margin-top:10px;
-max-width:400px;
-margin-left:auto;
-margin-right:auto;
-background:#222;
+#chatBox button{
 padding:10px;
-border-radius:10px;
 }
-
 </style>
-
 </head>
 
 <body>
 
-<h2>Locket Bunee 📸</h2>
+<h2>Locket-Bunee</h2>
 
-<video id="video" autoplay playsinline></video>
+<video id="camera" autoplay playsinline></video>
+<canvas id="canvas" style="display:none;"></canvas>
 
-<canvas id="canvas" style="display:none"></canvas>
+<div id="emojiArea"></div>
+
+<div id="chatBox">
+<input type="text" id="chatInput" placeholder="Nhắn gì đó...">
+<button onclick="sendChat()">Gửi</button>
+</div>
 
 <div class="controls">
-
-<button onclick="takePhoto()">📸 Chụp</button>
-
-<button onclick="savePhoto()">💾 Lưu</button>
-
-<button onclick="switchCam()">🔄 Xoay Cam</button>
-
-<button onclick="emoji()">😀 Emoji</button>
-
+<button class="capture" onclick="takePhoto()">📷</button>
+<button class="save" onclick="savePhoto()">💾</button>
+<button class="rotate" onclick="rotateCamera()">🔄</button>
+<button class="emoji" onclick="dropEmoji()">😊</button>
+<button class="chat" onclick="toggleChat()">💬</button>
 </div>
-
-<div id="photo"></div>
-
-<div class="chatbox">
-
-<input id="message" placeholder="Nhắn gì đó...">
-
-<button onclick="sendChat()">💬 Gửi</button>
-
-</div>
-
-<div class="chat" id="chat"></div>
 
 <script>
+let video = document.getElementById("camera");
+let canvas = document.getElementById("canvas");
+let ctx = canvas.getContext("2d");
 
-let video=document.getElementById("video")
-let canvas=document.getElementById("canvas")
-let currentStream
-let facing="user"
+let useFront=true;
 
-function startCam(){
+async function startCamera(){
+let stream = await navigator.mediaDevices.getUserMedia({
+video:{facingMode: useFront ? "user":"environment"}
+});
+video.srcObject=stream;
+}
+startCamera();
 
-navigator.mediaDevices.getUserMedia({
-video:{facingMode:facing}
-})
-
-.then(stream=>{
-
-currentStream=stream
-video.srcObject=stream
-
-})
-
+function rotateCamera(){
+useFront=!useFront;
+startCamera();
 }
 
-startCam()
-
 function takePhoto(){
-
-let ctx=canvas.getContext("2d")
-
-canvas.width=video.videoWidth
-canvas.height=video.videoHeight
-
-ctx.drawImage(video,0,0)
-
-let img=canvas.toDataURL("image/png")
-
-document.getElementById("photo").innerHTML=
-`<img id="captured" src="${img}">`
-
+canvas.width=video.videoWidth;
+canvas.height=video.videoHeight;
+ctx.drawImage(video,0,0);
+alert("Đã chụp ảnh!");
 }
 
 function savePhoto(){
-
-let img=document.getElementById("captured")
-
-if(!img)return
-
-let a=document.createElement("a")
-a.href=img.src
-a.download="photo.png"
-a.click()
-
+let link=document.createElement("a");
+link.download="photo.png";
+link.href=canvas.toDataURL();
+link.click();
 }
 
-function switchCam(){
-
-facing = facing=="user" ? "environment":"user"
-
-currentStream.getTracks().forEach(track=>track.stop())
-
-startCam()
-
+function dropEmoji(){
+let e=document.createElement("div");
+e.innerHTML="😊";
+e.style.fontSize="40px";
+document.getElementById("emojiArea").appendChild(e);
 }
 
-function emoji(){
-
-let e=prompt("Nhập emoji")
-
-let img=document.getElementById("captured")
-
-if(!img)return
-
-document.getElementById("photo").innerHTML +=
-`<div style="font-size:40px">${e}</div>`
-
+function toggleChat(){
+let box=document.getElementById("chatBox");
+box.style.display= box.style.display=="none"?"block":"none";
 }
 
 function sendChat(){
-
-let msg=document.getElementById("message").value
-
-if(msg=="")return
-
-document.getElementById("chat").innerHTML+=
-`<p>💬 ${msg}</p>`
-
-document.getElementById("message").value=""
-
+let input=document.getElementById("chatInput");
+alert("Tin nhắn: "+input.value);
+input.value="";
 }
-
 </script>
 
 </body>
-
 </html>
