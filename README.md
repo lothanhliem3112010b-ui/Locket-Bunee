@@ -1,159 +1,146 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, Image as ImageIcon, RefreshCcw, MessageCircle, Users, ChevronDown, Zap, X } from 'lucide-react';
-
-// --- Hiệu ứng Emoji bay ---
-const FlyingEmoji = ({ id, emoji, onComplete }) => {
-  return (
-    <motion.div
-      initial={{ y: 0, x: 0, opacity: 1, scale: 0.5 }}
-      animate={{ 
-        y: -window.innerHeight * 0.7, // Bay lên cao 70% màn hình
-        x: (Math.random() - 0.5) * 300, // Bay lệch sang trái/phải ngẫu nhiên
-        opacity: 0, 
-        scale: 2,
-        rotate: Math.random() * 90 - 45 
-      }}
-      transition={{ duration: 2.5, ease: "easeOut" }}
-      onAnimationComplete={() => onComplete(id)}
-      className="absolute bottom-24 text-6xl pointer-events-none z-[100] select-none"
-    >
-      {emoji}
-    </motion.div>
-  );
-};
-
-const LocketBuApp = () => {
-  const [emojis, setEmojis] = useState([]);
-  const [hasCamera, setHasCamera] = useState(false);
-  const videoRef = useRef(null);
-
-  // Khởi động Camera ngay khi vào web
-  useEffect(() => {
-    async function setupCamera() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: "user", aspectRatio: 1 } 
-        });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          setHasCamera(true);
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LOCKET BU</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes flyUp {
+            0% { transform: translateY(0) scale(0.5); opacity: 1; }
+            100% { transform: translateY(-600px) translateX(var(--tx)) rotate(var(--tr)); opacity: 0; scale: 2; }
         }
-      } catch (err) {
-        console.error("Lỗi camera: ", err);
-        setHasCamera(false);
-      }
-    }
-    setupCamera();
-  }, []);
+        .emoji-fly {
+            position: absolute;
+            bottom: 120px;
+            font-size: 3.5rem;
+            pointer-events: none;
+            animation: flyUp 2s ease-out forwards;
+            z-index: 100;
+        }
+        .squircle { border-radius: 65px; }
+    </style>
+</head>
+<body class="bg-black">
+    <div id="root"></div>
 
-  // Hàm khi nhấn nút chụp (Thả emoji bay)
-  const handleAction = () => {
-    const list = ['❤️', '🔥', '😂', '😍', '👍', '✨', '💀', '💩'];
-    const newEmoji = {
-      id: Date.now(),
-      char: list[Math.floor(Math.random() * list.length)]
-    };
-    setEmojis((prev) => [...prev, newEmoji]);
-  };
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
 
-  const removeEmoji = (id) => {
-    setEmojis((prev) => prev.filter(e => e.id !== id));
-  };
+        const LocketBuApp = () => {
+            const [emojis, setEmojis] = useState([]);
+            const [hasCamera, setHasCamera] = useState(false);
+            const videoRef = useRef(null);
 
-  return (
-    <div className="fixed inset-0 bg-gradient-to-b from-[#4a0416] via-[#2a010a] to-black text-white flex flex-col items-center overflow-hidden font-sans">
-      
-      {/* 1. TOP BAR */}
-      <header className="w-full max-w-md p-6 flex justify-between items-center z-10">
-        <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/20 shadow-lg">
-          <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="avatar" />
-        </div>
-        
-        <button className="bg-white/10 backdrop-blur-xl px-4 py-2 rounded-full flex items-center gap-2 text-sm font-semibold border border-white/10 shadow-inner">
-          <Users size={16} />
-          <span>63 người bạn</span>
-        </button>
+            // Khởi động Camera
+            useEffect(() => {
+                async function startCamera() {
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ 
+                            video: { facingMode: "user", aspectRatio: 1 } 
+                        });
+                        if (videoRef.current) {
+                            videoRef.current.srcObject = stream;
+                            setHasCamera(true);
+                        }
+                    } catch (err) {
+                        console.error("Không mở được camera:", err);
+                    }
+                }
+                startCamera();
+            }, []);
 
-        <button className="p-2.5 bg-white/10 rounded-full backdrop-blur-xl border border-white/10">
-          <MessageCircle size={22} fill="currentColor" className="opacity-90" />
-        </button>
-      </header>
+            // Thả Emoji bay
+            const dropEmoji = () => {
+                const list = ['❤️', '🔥', '😂', '😍', '👍', '✨', '💀', '💩'];
+                const newEmoji = {
+                    id: Date.now(),
+                    char: list[Math.floor(Math.random() * list.length)],
+                    tx: (Math.random() - 0.5) * 300 + 'px', // Bay lệch trái phải
+                    tr: (Math.random() * 90 - 45) + 'deg'   // Xoay ngẫu nhiên
+                };
+                setEmojis(prev => [...prev, newEmoji]);
+                
+                // Tự xóa emoji sau khi bay xong để nhẹ máy
+                setTimeout(() => {
+                    setEmojis(prev => prev.filter(e => e.id !== newEmoji.id));
+                }, 2000);
+            };
 
-      {/* 2. CAMERA AREA (LOCKET BU) */}
-      <main className="flex-1 w-full max-w-md flex flex-col items-center justify-center px-4 relative">
-        {/* Tên Web */}
-        <h2 className="absolute top-2 text-white/40 font-black tracking-[0.3em] text-[10px] uppercase">
-          LOCKET BU
-        </h2>
-        
-        <div className="relative w-full aspect-square bg-zinc-900 rounded-[65px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-[5px] border-black/20">
-          <Zap className="absolute top-6 left-6 text-white/70 z-10" size={20} />
-          <span className="absolute top-6 right-6 text-white/70 font-bold text-xs z-10">1x</span>
-          
-          {hasCamera ? (
-            <video 
-              ref={videoRef} 
-              autoPlay 
-              playsInline 
-              className="w-full h-full object-cover scale-x-[-1]" 
-            />
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-800 p-10 text-center">
-              <Camera size={48} className="mb-4 text-zinc-600" />
-              <p className="text-zinc-500 text-sm">Vui lòng cho phép quyền truy cập Camera để dùng Locket Bu</p>
-            </div>
-          )}
-        </div>
+            return (
+                <div className="fixed inset-0 bg-gradient-to-b from-[#4a0416] via-[#2a010a] to-black text-white flex flex-col items-center overflow-hidden font-sans">
+                    
+                    {/* Header */}
+                    <header className="w-full max-w-md p-6 flex justify-between items-center z-50">
+                        <div className="w-10 h-10 rounded-full border-2 border-white/20 overflow-hidden shadow-lg">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="avatar" />
+                        </div>
+                        <div className="bg-white/10 backdrop-blur-xl px-4 py-2 rounded-full flex items-center gap-2 text-xs font-bold border border-white/10">
+                            👤 63 người bạn
+                        </div>
+                        <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-xl">💬</div>
+                    </header>
 
-        {/* Emoji Container */}
-        <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-          <AnimatePresence>
-            {emojis.map(e => (
-              <FlyingEmoji key={e.id} id={e.id} emoji={e.char} onComplete={removeEmoji} />
-            ))}
-          </AnimatePresence>
-        </div>
-      </main>
+                    {/* Khung Camera LOCKET BU */}
+                    <main className="flex-1 w-full max-w-md flex flex-col items-center justify-center px-6 relative">
+                        <h2 className="absolute top-2 text-white/30 font-black tracking-[0.3em] text-[10px]">LOCKET BU</h2>
+                        
+                        <div className="relative w-full aspect-square bg-zinc-900 squircle overflow-hidden border-[5px] border-black/30 shadow-2xl">
+                            {hasCamera ? (
+                                <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover scale-x-[-1]" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-zinc-600 italic px-10 text-center">
+                                    Đang chờ quyền camera...
+                                </div>
+                            )}
+                            
+                            {/* Icon Flash ảo */}
+                            <div className="absolute top-6 left-6 text-white/70">⚡</div>
+                            <div className="absolute top-6 right-6 text-white/70 font-bold text-xs">1x</div>
+                        </div>
 
-      {/* 3. BOTTOM CONTROLS */}
-      <footer className="w-full max-w-md p-8 pb-10 flex flex-col items-center gap-10">
-        
-        <div className="flex w-full justify-between items-center px-4">
-          <button className="p-4 bg-white/5 rounded-[22px] hover:bg-white/10 active:scale-95 transition">
-            <ImageIcon size={28} className="text-white/80" />
-          </button>
+                        {/* Vùng Emoji bay */}
+                        {emojis.map(e => (
+                            <div key={e.id} className="emoji-fly" style={{ '--tx': e.tx, '--tr': e.tr }}>
+                                {e.char}
+                            </div>
+                        ))}
+                    </main>
 
-          {/* Shutter Button (Nút thả emoji) */}
-          <button 
-            onClick={handleAction}
-            className="relative w-24 h-24 flex items-center justify-center group"
-          >
-            <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-[#ff2d55] to-[#ffb347] animate-pulse blur-[2px]" />
-            <div className="relative w-[88px] h-[88px] bg-white rounded-full p-1 shadow-inner active:scale-90 transition-transform">
-               <div className="w-full h-full rounded-full border-[3px] border-zinc-200 bg-white" />
-            </div>
-          </button>
+                    {/* Nút bấm phía dưới */}
+                    <footer className="w-full max-w-md p-8 pb-12 flex flex-col items-center gap-10">
+                        <div className="flex w-full justify-between items-center px-4">
+                            <button className="p-4 bg-white/5 rounded-[25px] text-2xl">🖼️</button>
+                            
+                            {/* Nút Chụp + Thả Emoji */}
+                            <button onClick={dropEmoji} className="relative w-24 h-24 flex items-center justify-center active:scale-90 transition-transform">
+                                <div className="absolute inset-0 bg-gradient-to-tr from-[#ff2d55] to-[#ffb347] rounded-full blur-[2px]" />
+                                <div className="relative w-[86px] h-[86px] bg-white rounded-full p-1 shadow-xl">
+                                    <div className="w-full h-full rounded-full border-[3px] border-zinc-200 bg-white" />
+                                </div>
+                            </button>
 
-          <button className="p-4 bg-white/5 rounded-full hover:bg-white/10 active:scale-95 transition">
-            <RefreshCcw size={28} className="text-white/80" />
-          </button>
-        </div>
+                            <button className="p-4 bg-white/5 rounded-full text-2xl">🔄</button>
+                        </div>
 
-        {/* 4. HISTORY SECTION */}
-        <div className="flex flex-col items-center gap-2 cursor-pointer group">
-          <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-2xl group-active:scale-95 transition">
-            <span className="bg-[#ff2d55] text-white text-[10px] font-black px-1.5 py-0.5 rounded-md shadow-lg shadow-pink-500/20">16</span>
-            <span className="font-bold text-sm tracking-wide text-white/90">Lịch sử</span>
-          </div>
-          <ChevronDown size={20} className="text-white/30 group-hover:text-white transition-colors" />
-        </div>
-      </footer>
+                        {/* Lịch sử */}
+                        <div className="flex flex-col items-center gap-2 opacity-80 active:scale-95 transition">
+                            <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-2xl border border-white/5">
+                                <span className="bg-[#ff2d55] text-[10px] font-black px-1.5 py-0.5 rounded">16</span>
+                                <span className="font-bold text-sm tracking-wide">Lịch sử</span>
+                            </div>
+                            <div className="text-white/20 animate-bounce">▼</div>
+                        </div>
+                    </footer>
+                </div>
+            );
+        };
 
-      {/* iPhone Home Bar */}
-      <div className="w-32 h-1.5 bg-white/10 rounded-full mb-2" />
-    </div>
-  );
-};
-
-export default LocketBuApp;
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<LocketBuApp />);
+    </script>
+</body>
+</html>
