@@ -1,143 +1,128 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Locket-Bunee</title>
+import React, { useState, useEffect, useRef } from 'react';
+import { db, storage } from './firebase';
+import { collection, addDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { Camera, RefreshCw, Send, User, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
-<style>
-body{
-margin:0;
-background:#000;
-color:white;
-font-family:sans-serif;
-text-align:center;
-}
+const LocketClone = () => {
+  const [posts, setPosts] = useState([]);
+  const [stream, setStream] = useState(null);
+  const [capturedImg, setCapturedImg] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const videoRef = useRef(null);
 
-video{
-width:100%;
-height:60vh;
-object-fit:cover;
-}
+  // 1. Lấy dữ liệu bài đăng real-time
+  useEffect(() => {
+    const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setPosts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+    return () => unsubscribe();
+  }, []);
 
-.controls{
-position:fixed;
-bottom:20px;
-width:100%;
-display:flex;
-justify-content:center;
-gap:10px;
-}
+  // 2. Mở Camera
+  const startCamera = async () => {
+    const mediaStream = await navigator.mediaDevices.getUserMedia({ 
+      video: { aspectWeight: 1, facingMode: "user" } 
+    });
+    setStream(mediaStream);
+    if (videoRef.current) videoRef.current.srcObject = mediaStream;
+  };
 
-button{
-padding:12px 16px;
-border:none;
-border-radius:20px;
-font-size:16px;
-}
+  // 3. Chụp ảnh từ Video stream
+  const takePhoto = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 500; canvas.height = 500;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(videoRef.current, 0, 0, 500, 500);
+    setCapturedImg(canvas.toDataURL('image/jpeg'));
+    // Tắt camera sau khi chụp
+    stream.getTracks().forEach(track => track.stop());
+    setStream(null);
+  };
 
-.capture{background:white;}
-.save{background:#00ff88;}
-.rotate{background:#ffaa00;}
-.emoji{background:#ff66cc;}
-.chat{background:#00aaff;}
+  // 4. Gửi ảnh lên Firebase
+  const handleUpload = async () => {
+    if (!capturedImg) return;
+    setLoading(true);
+    try {
+      const storageRef = ref(storage, `posts/${Date.now()}.jpg`);
+      await uploadString(storageRef, capturedImg, 'data_url');
+      const url = await getDownloadURL(storageRef);
+      
+      await addDoc(collection(db, "posts"), {
+        imageUrl: url,
+        user: "User_Web",
+        createdAt: new Date()
+      });
+      setCapturedImg(null);
+    } catch (e) { console.error(e); }
+    setLoading(false);
+  };
 
-#chatBox{
-position:fixed;
-bottom:90px;
-left:50%;
-transform:translateX(-50%);
-width:80%;
-display:none;
-}
+  return (
+    <div className="min-h-screen bg-black text-white flex flex-col items-center overflow-x-hidden">
+      {/* Header */}
+      <div className="w-full max-w-md p-5 flex justify-between items-center sticky top-0 bg-black/50 backdrop-blur-lg z-50">
+        <User className="text-gray-400" />
+        <h1 className="text-xl font-black tracking-tighter italic">LOCKET CLONE</h1>
+        <div className="w-6" />
+      </div>
 
-#chatBox input{
-width:70%;
-padding:10px;
-border-radius:10px;
-border:none;
-}
+      {/* Feed */}
+      <div className="w-full max-w-md space-y-10 p-4 pb-40">
+        {posts.map((post) => (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} key={post.id} className="space-y-3">
+            <div className="flex items-center gap-2 px-2">
+              <div className="w-7 h-7 bg-yellow-400 rounded-full" />
+              <span className="font-bold text-sm">{post.user}</span>
+            </div>
+            <div className="aspect-square rounded-[45px] overflow-hidden border-[6px] border-zinc-900 shadow-2xl">
+              <img src={post.imageUrl} className="w-full h-full object-cover" alt="Locket" />
+            </div>
+          </motion.div>
+        ))}
+      </div>
 
-#chatBox button{
-padding:10px;
-}
-</style>
-</head>
+      {/* Camera / Preview Overlay */}
+      <AnimatePresence>
+        {(stream || capturedImg) && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+            className="fixed inset-0 bg-black z-[100] flex flex-col items-center justify-center p-6">
+            <button onClick={() => { setStream(null); setCapturedImg(null); }} className="absolute top-10 right-10 p-2 bg-zinc-800 rounded-full">
+              <X />
+            </button>
+            
+            <div className="w-full max-w-sm aspect-square rounded-[50px] overflow-hidden border-4 border-yellow-400">
+              {stream && <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover scale-x-[-1]" />}
+              {capturedImg && <img src={capturedImg} className="w-full h-full object-cover" alt="preview" />}
+            </div>
 
-<body>
+            <div className="mt-10">
+              {stream ? (
+                <button onClick={takePhoto} className="w-20 h-20 bg-white rounded-full border-8 border-gray-300" />
+              ) : (
+                <button onClick={handleUpload} disabled={loading} className="flex items-center gap-2 bg-yellow-400 text-black px-8 py-4 rounded-full font-bold">
+                  {loading ? <RefreshCw className="animate-spin" /> : <Send />}
+                  {loading ? "Đang gửi..." : "Gửi ngay"}
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-<h2>Locket-Bunee</h2>
+      {/* Bottom Nav */}
+      {!stream && !capturedImg && (
+        <div className="fixed bottom-8 w-full max-w-xs flex justify-center">
+          <button onClick={startCamera} className="w-20 h-20 bg-yellow-400 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(250,204,21,0.5)] active:scale-90 transition">
+            <Camera size={35} color="black" strokeWidth={2.5} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
 
-<video id="camera" autoplay playsinline></video>
-<canvas id="canvas" style="display:none;"></canvas>
-
-<div id="emojiArea"></div>
-
-<div id="chatBox">
-<input type="text" id="chatInput" placeholder="Nhắn gì đó...">
-<button onclick="sendChat()">Gửi</button>
-</div>
-
-<div class="controls">
-<button class="capture" onclick="takePhoto()">📷</button>
-<button class="save" onclick="savePhoto()">💾</button>
-<button class="rotate" onclick="rotateCamera()">🔄</button>
-<button class="emoji" onclick="dropEmoji()">😊</button>
-<button class="chat" onclick="toggleChat()">💬</button>
-</div>
-
-<script>
-let video = document.getElementById("camera");
-let canvas = document.getElementById("canvas");
-let ctx = canvas.getContext("2d");
-
-let useFront=true;
-
-async function startCamera(){
-let stream = await navigator.mediaDevices.getUserMedia({
-video:{facingMode: useFront ? "user":"environment"}
-});
-video.srcObject=stream;
-}
-startCamera();
-
-function rotateCamera(){
-useFront=!useFront;
-startCamera();
-}
-
-function takePhoto(){
-canvas.width=video.videoWidth;
-canvas.height=video.videoHeight;
-ctx.drawImage(video,0,0);
-alert("Đã chụp ảnh!");
-}
-
-function savePhoto(){
-let link=document.createElement("a");
-link.download="photo.png";
-link.href=canvas.toDataURL();
-link.click();
-}
-
-function dropEmoji(){
-let e=document.createElement("div");
-e.innerHTML="😊";
-e.style.fontSize="40px";
-document.getElementById("emojiArea").appendChild(e);
-}
-
-function toggleChat(){
-let box=document.getElementById("chatBox");
-box.style.display= box.style.display=="none"?"block":"none";
-}
-
-function sendChat(){
-let input=document.getElementById("chatInput");
-alert("Tin nhắn: "+input.value);
-input.value="";
-}
-</script>
-
-</body>
-</html>
+export default LocketClone;
